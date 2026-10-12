@@ -25,42 +25,249 @@
     <h1>The logo keychain</h1>
   </header>
 
-  <!-- PLACEHOLDER: remove when the workbook is written -->
-  <div class="placeholder">
-    <p><strong>Coming soon</strong></p>
-    <p>The logo flattened back to 2D, built in code and exported to print.<br>New idea: Code becomes geometry: JSCAD booleans, then an STL file.</p>
-    <p class="check"></p>
-  </div>
+  <details class="controls" open>
+    <summary>Controls</summary>
+
+    <label>Build step</label>
+    <input id="step" type="range" min="1" max="4" step="1" value="4">
+    <p id="stepName"></p>
+
+    <label>Diameter (mm)</label>
+    <input id="diameter" type="range" min="25" max="60" step="1" value="40">
+
+    <label>Thickness (mm)</label>
+    <input id="thickness" type="range" min="2" max="6" step="0.5" value="4">
+
+    <label>Groove depth (mm)</label>
+    <input id="depth" type="range" min="0.4" max="3" step="0.2" value="1.2">
+
+    <label>Grid lines</label>
+    <input id="lines" type="range" min="1" max="5" step="1" value="3">
+
+    <label><input id="turn" type="checkbox" checked> Turn slowly</label>
+
+    <button id="download">Download STL</button>
+    <div id="facts"></div>
+  </details>
+  <script>
+    // on phones, start with the controls folded away (tap "Controls" to open them)
+    if (matchMedia('(max-width: 700px)').matches) document.querySelector('.controls').open = false;
+  </script>
 
   <footer class="back"><a href="../">All workbooks</a></footer>
 
   <script type="module">
     import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
     import { STLExporter } from 'three/addons/exporters/STLExporter.js';
-    import { primitives, booleans } from '../vendor/jscad/jscad-modeling.es.js';
+    import { primitives, booleans, extrusions, transforms, geometries, measurements }
+      from '../vendor/jscad/jscad-modeling.es.js';
 
     // ------------------------------------------------------------------
     // 1. SETUP: renderer, scene, camera, lights (same in every workbook)
     // ------------------------------------------------------------------
 
+    const canvas = document.querySelector('canvas.stage');
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+
+    const scene = new THREE.Scene();
+
+    // this time the units are millimetres: the keychain is about 40 across
+    const camera = new THREE.PerspectiveCamera(35, 1, 1, 1000);
+    const view = new THREE.Vector3(0, 0, 120); // straight on, like the logo
+
+    // drag to look around, scroll to zoom
+    const orbit = new OrbitControls(camera, canvas);
+    orbit.target.set(0, 4, 0);
+    orbit.enableDamping = true;
+
+    // a soft light from everywhere, and a sun from the top left to show the grooves
+    const ambient = new THREE.AmbientLight('white', 1);
+    const sun = new THREE.DirectionalLight('white', 2.5);
+    sun.position.set(-40, 60, 80);
+    scene.add(ambient, sun);
+
+    // keep the picture sharp and unstretched when the window changes size
+    function resize() {
+      renderer.setSize(innerWidth, innerHeight, false);
+      camera.aspect = innerWidth / innerHeight;
+      camera.updateProjectionMatrix();
+      // on a tall, narrow screen (a phone), step back so everything fits the width
+      camera.position.copy(view).multiplyScalar(1 / Math.min(camera.aspect, 1));
+    }
+    addEventListener('resize', resize);
+    resize();
 
     // ------------------------------------------------------------------
-    // 2. THE THING: a disc minus the grid grooves, plus a ring (JSCAD)
+    // 2. THE THING: the logo as a keychain, built in code with JSCAD
+    //
+    //    JSCAD builds solid shapes from simple ones with three operations:
+    //      union     (add shapes together)
+    //      subtract  (cut one shape out of another)
+    //      intersect (keep only where shapes overlap)
+    //    Everything is in millimetres, with z pointing up out of the face.
     // ------------------------------------------------------------------
 
+    const STEPS = [
+      '1. A disc',
+      '2. Union: add a tab for the ring',
+      '3. Subtract: cut the hole',
+      '4. Subtract: engrave the logo’s grid'
+    ];
+
+    // the logo's grid, as flat (2D) lines: the same rings as workbook 1, seen from the front
+    function logoGrid(radius, lines, width) {
+      const shapes = [];
+
+      // parallels: straight lines across, evenly spaced from top to bottom
+      for (let i = 1; i <= lines; i++) {
+        const y = -radius + (2 * radius * i) / (lines + 1);
+        shapes.push(primitives.rectangle({ size: [radius * 2, width], center: [0, y] }));
+      }
+
+      // meridians: seen from the front, a ring round the globe looks like an ellipse,
+      // as wide as the sine of its longitude. The middle one is a straight line.
+      for (let i = 1; i <= lines; i++) {
+        const longitude = -Math.PI / 2 + (Math.PI * i) / (lines + 1);
+        const halfWidth = radius * Math.abs(Math.sin(longitude));
+        if (longitude < 0) continue; // the ellipse draws both sides: skip the left-hand copies
+
+        if (halfWidth < width) {
+          shapes.push(primitives.rectangle({ size: [width, radius * 2] })); // the middle line
+        } else {
+          // an elliptical line: a big ellipse with a slightly smaller one cut out of it
+          const outer = primitives.ellipse({ radius: [halfWidth + width / 2, radius + width / 2], segments: 96 });
+          const inner = primitives.ellipse({ radius: [halfWidth - width / 2, radius - width / 2], segments: 96 });
+          shapes.push(booleans.subtract(outer, inner));
+        }
+      }
+      // intersect: keep only the parts of the grid inside the disc, so none cut into the tab
+      const disc = primitives.circle({ radius, segments: 96 });
+      return booleans.intersect(booleans.union(shapes), disc);
+    }
+
+    function keychain({ step, diameter, thickness, depth, lines }) {
+      const radius = diameter / 2;
+
+      // 1. a disc, lying flat: its face points up (z)
+      let shape = primitives.cylinder({ radius, height: thickness, segments: 96 });
+
+      // 2. union: a round tab at the top for the key ring
+      const tabCentre = [0, radius + 3, 0];
+      if (step >= 2) {
+        const tab = primitives.cylinder({ radius: 6, height: thickness, center: tabCentre, segments: 48 });
+        shape = booleans.union(shape, tab);
+      }
+
+      // 3. subtract: the hole for the ring
+      if (step >= 3) {
+        const hole = primitives.cylinder({ radius: 2.5, height: thickness + 2, center: tabCentre, segments: 48 });
+        shape = booleans.subtract(shape, hole);
+      }
+
+      // 4. subtract: engrave the grid into the face. Never all the way through, or the
+      //    16 tiles of the logo would fall out!
+      if (step >= 4) {
+        const safeDepth = Math.min(depth, thickness - 1);
+        const grid = extrusions.extrudeLinear({ height: safeDepth + 1 }, logoGrid(radius, lines, diameter / 25));
+        shape = booleans.subtract(shape, transforms.translateZ(thickness / 2 - safeDepth, grid));
+      }
+
+      return shape;
+    }
+
+    // ---- Glue: JSCAD shape → three.js mesh. You don't need to read this part. ----
+    //
+    // JSCAD describes a solid as flat polygons; three.js draws triangles. Cut each polygon into
+    // triangles (a fan from its first corner), and colour it: the grooves' floors white, like
+    // the logo's lines, and the rest in the logo's gradient, left to right.
+
+    const cyan = new THREE.Color('#3bb4e5');
+    const blue = new THREE.Color('#4a5bb5');
+    const purple = new THREE.Color('#7b3fa0');
+
+    function toThreeGeometry(shape, thickness, radius) {
+      const positions = [];
+      const colours = [];
+      for (const polygon of geometries.geom3.toPolygons(shape)) {
+        const corners = polygon.vertices;
+        const z = corners[0][2];
+        const facesUp = geometries.poly3.plane(polygon)[2] > 0.99;
+        const grooveFloor = facesUp && z < thickness / 2 - 0.01;
+
+        for (let i = 1; i < corners.length - 1; i++) {
+          for (const corner of [corners[0], corners[i], corners[i + 1]]) {
+            positions.push(...corner);
+            const t = THREE.MathUtils.clamp((corner[0] + radius) / (2 * radius), 0, 1);
+            const colour = grooveFloor ? new THREE.Color('white')
+              : t < 0.5 ? cyan.clone().lerp(blue, t * 2) : blue.clone().lerp(purple, t * 2 - 1);
+            colours.push(colour.r, colour.g, colour.b);
+          }
+        }
+      }
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+      geometry.setAttribute('color', new THREE.Float32BufferAttribute(colours, 3));
+      geometry.computeVertexNormals(); // flat faces, for the lighting
+      return geometry;
+    }
+
+    // ---- Show it ----
+
+    const keyring = new THREE.Mesh(
+      new THREE.BufferGeometry(), // an empty shape for now: rebuild makes the real one
+      new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.5 })
+    );
+    scene.add(keyring);
 
     // ------------------------------------------------------------------
     // 3. CONTROLS: plain HTML inputs wired to the scene
     // ------------------------------------------------------------------
 
+    const inputs = ['step', 'diameter', 'thickness', 'depth', 'lines'];
+    const facts = document.getElementById('facts');
+
+    function rebuild() {
+      // read every slider: { step: 4, diameter: 40, … }
+      const settings = Object.fromEntries(inputs.map((id) => [id, Number(document.getElementById(id).value)]));
+
+      const shape = keychain(settings);
+      keyring.geometry.dispose(); // throw away the old shape
+      keyring.geometry = toThreeGeometry(shape, settings.thickness, settings.diameter / 2);
+
+      document.getElementById('stepName').textContent = STEPS[settings.step - 1];
+      const [[minX, minY, minZ], [maxX, maxY, maxZ]] = measurements.measureBoundingBox(shape);
+      facts.textContent = `${Math.round(maxX - minX)} × ${Math.round(maxY - minY)} × ${maxZ - minZ} mm`;
+    }
+    for (const id of inputs) document.getElementById(id).addEventListener('input', rebuild);
+    rebuild();
+
+    const turn = document.getElementById('turn');
+
+    // Save the shape as an STL file, ready for a 3D printer's slicer (it reads millimetres).
+    // Export a fresh mesh, so the file doesn't include the slow turn on screen.
+    document.getElementById('download').addEventListener('click', () => {
+      const stl = new STLExporter().parse(new THREE.Mesh(keyring.geometry), { binary: true });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(new Blob([stl], { type: 'model/stl' }));
+      link.download = 'mercator-keychain.stl';
+      link.click();
+    });
 
     // ------------------------------------------------------------------
     // 4. LOOP: animate and render, every frame
     // ------------------------------------------------------------------
 
+    let lastTime = 0;
+    renderer.setAnimationLoop((time) => {
+      const seconds = (time - lastTime) / 1000; // since the last frame
+      lastTime = time;
 
-    // PLACEHOLDER: proves the libraries load. Remove with the message above.
-    document.querySelector('.check').textContent = `three.js r${THREE.REVISION} loaded`;
+      if (turn.checked) keyring.rotation.y += 0.5 * seconds; // radians per second
+      orbit.update();
+      renderer.render(scene, camera);
+    });
   </script>
 </body>
 </html>

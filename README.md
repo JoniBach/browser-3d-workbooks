@@ -73,7 +73,7 @@ vendor/                three.js r186 and JSCAD modeling 2.13, local copies (see 
 - [x] 1. The spinning atlas
 - [x] 2. The cat on a tiny planet
 - [x] 3. The diorama
-- [ ] 4. The logo keychain
+- [x] 4. The logo keychain
 
 To do along the way:
 
