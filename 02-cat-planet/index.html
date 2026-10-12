@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>The cat on a tiny planet · Mercator 3D workbooks</title>
+  <link rel="icon" href="../assets/brand/mercator-mark-192.png">
+  <link rel="stylesheet" href="../shared/style.css">
+
+  <!-- "three" means our local copy: no build step, no CDN, works on conference wifi -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "../vendor/three/build/three.module.js",
+        "three/addons/": "../vendor/three/addons/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <canvas class="stage"></canvas>
+
+  <header class="title">
+    <div class="zoom">The journey</div>
+    <h1>The cat on a tiny planet</h1>
+  </header>
+
+  <!-- PLACEHOLDER: remove when the workbook is written -->
+  <div class="placeholder">
+    <p><strong>Coming soon</strong></p>
+    <p>Type a place and the cat walks there across the globe.<br>New idea: Loading a model (GLB) and playing one of its animations.</p>
+    <p class="check"></p>
+  </div>
+
+  <footer class="back"><a href="../">All workbooks</a></footer>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+    // ------------------------------------------------------------------
+    // 1. SETUP: renderer, scene, camera, lights (same in every workbook)
+    // ------------------------------------------------------------------
+
+
+    // ------------------------------------------------------------------
+    // 2. THE THING: the cat (../assets/models/cat.glb) and the planet it walks on
+    // ------------------------------------------------------------------
+
+
+    // ------------------------------------------------------------------
+    // 3. CONTROLS: plain HTML inputs wired to the scene
+    // ------------------------------------------------------------------
+
+
+    // ------------------------------------------------------------------
+    // 4. LOOP: animate and render, every frame
+    // ------------------------------------------------------------------
+
+
+    // PLACEHOLDER: proves the libraries load. Remove with the message above.
+    document.querySelector('.check').textContent = `three.js r${THREE.REVISION} loaded`;
+  </script>
+</body>
+</html>

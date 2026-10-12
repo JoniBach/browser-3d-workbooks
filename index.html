@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mercator 3D workbooks</title>
+  <link rel="icon" href="assets/brand/mercator-mark-192.png">
+  <link rel="stylesheet" href="shared/style.css">
+  <style>
+    main { max-width: 640px; margin: 64px auto; padding: 0 24px; }
+    h1 { font-size: 32px; margin-bottom: 4px; }
+    .bar { width: 64px; height: 4px; border-radius: 2px; background: var(--gradient); }
+    ol { padding: 0; list-style: none; }
+    li a {
+      display: block;
+      margin: 12px 0;
+      padding: 16px 20px;
+      border-radius: 12px;
+      color: inherit;
+      text-decoration: none;
+      background: white;
+      box-shadow: 0 2px 12px rgba(31, 42, 68, 0.08);
+    }
+    li a:hover { box-shadow: 0 4px 20px rgba(31, 42, 68, 0.16); }
+    .zoom { font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--grey); }
+    .name { font-size: 18px; font-weight: 700; margin: 2px 0; }
+    .idea { color: var(--grey); }
+  </style>
+</head>
+<body>
+  <main>
+    <img src="assets/brand/mercator-logo-195x42.png" alt="Mercator Digital" width="195" height="42">
+    <h1>3D in the browser</h1>
+    <div class="bar"></div>
+    <p>Four small workbooks, zooming in from the whole world to something in your hand.</p>
+
+    <ol>
+      <li><a href="01-atlas/">
+        <div class="zoom">z0: the world</div>
+        <div class="name">1. The spinning atlas</div>
+        <div class="idea">Scene basics: camera, lights, a loop and sliders</div>
+      </a></li>
+      <li><a href="02-cat-planet/">
+        <div class="zoom">The journey</div>
+        <div class="name">2. The cat on a tiny planet</div>
+        <div class="idea">Loading a model and playing its walk</div>
+      </a></li>
+      <li><a href="03-diorama/">
+        <div class="zoom">z12: the place</div>
+        <div class="name">3. The diorama</div>
+        <div class="idea">Turning elevation data into terrain</div>
+      </a></li>
+      <li><a href="04-keychain/">
+        <div class="zoom">1:1: in your hand</div>
+        <div class="name">4. The logo keychain</div>
+        <div class="idea">Building a shape in code and exporting it to print</div>
+      </a></li>
+    </ol>
+  </main>
+</body>
+</html>
