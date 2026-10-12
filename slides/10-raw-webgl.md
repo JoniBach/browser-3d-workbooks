@@ -13,4 +13,4 @@ gl.drawArrays(gl.TRIANGLES, 0, 3);
 
 ???
 
-This is the tall seat. We don't need it today. A library handles all of this for us.
+We don't need it today. A library handles all of this for us.

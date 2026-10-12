@@ -8,5 +8,4 @@
 
 ???
 
-Being honest about what's missing makes the next step feel reachable rather than hidden. The
-seat is low now; these are the longer rides.
+Being honest about what's missing makes the next step feel reachable rather than hidden.

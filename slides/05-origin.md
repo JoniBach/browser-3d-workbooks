@@ -7,8 +7,6 @@
 
 ???
 
-The adventure motorcycling thread runs right through: the tour itself, and the seat-height line.
-
 The grand tour had the bike, the routes, GPS tracks, photos and stories. geo-globe took all that
 out so only the spectacle was left: about 4,000 lines. The workbooks keep one idea each, in
 about 200 lines.
