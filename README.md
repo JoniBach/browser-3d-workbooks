@@ -54,6 +54,18 @@ Then open the address it prints. Everything the workbooks need is in this repo, 
 offline (handy on conference wifi). Workbook 3 fetches live elevation tiles when it can and falls
 back to the one in `assets/tiles/`.
 
+## Make your own diorama with Claude Code
+
+Clone this repo, open [Claude Code](https://claude.com/claude-code) in it, and describe a small
+world:
+
+> Make me a diorama of a fox in a snowy forest. At night the northern lights come out.
+
+[`CLAUDE.md`](CLAUDE.md) tells Claude how: the same four sections as the workbooks, in one HTML
+file that loads three.js from a CDN, saved in `my-dioramas/`. Double-click the file to open it:
+no installs, no build. [`starter/diorama.html`](starter/diorama.html) is the template it
+starts from (a lighthouse island with day and night), and works the same way.
+
 ## The slides
 
 The talk's slides are in [`slides/`](slides/): one Markdown file per slide, shown by a small
@@ -68,6 +80,8 @@ place (`slides/#12`).
 ```
 index.html             the list of workbooks
 00-hello-sphere/ … 04-keychain/   one index.html each
+CLAUDE.md              how Claude Code turns a brief into your own diorama
+starter/diorama.html   the standalone template: one file, three.js from a CDN
 slides/                the talk: one .md per slide, order.txt, and the viewer
 shared/style.css       the look: navy, and the logo's cyan-blue-purple gradient
 shared/errors.js       shows any error on screen (phones have no console)
