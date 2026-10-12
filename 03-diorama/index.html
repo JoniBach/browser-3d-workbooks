@@ -25,40 +25,275 @@
     <h1>The diorama</h1>
   </header>
 
-  <!-- PLACEHOLDER: remove when the workbook is written -->
-  <div class="placeholder">
-    <p><strong>Coming soon</strong></p>
-    <p>The ground where the cat stopped, in 3D, from real elevation data.<br>New idea: Turning data into geometry: one Web Mercator tile becomes terrain.</p>
-    <p class="check"></p>
-  </div>
+  <details class="controls" open>
+    <summary>Controls</summary>
+
+    <label>Place (latitude, longitude)</label>
+    <input id="place" type="text" value="51.06, 0.16">
+    <button id="go">Show</button>
+
+    <label>Exaggerate heights</label>
+    <input id="exaggerate" type="range" min="1" max="6" step="0.1" value="2">
+
+    <label>Sun angle</label>
+    <input id="sunAngle" type="range" min="-180" max="180" step="1" value="-50">
+
+    <label><input id="turn" type="checkbox" checked> Turn slowly</label>
+
+    <p id="status">Loading heights…</p>
+    <div id="facts"></div>
+  </details>
+  <script>
+    // on phones, start with the controls folded away (tap "Controls" to open them)
+    if (matchMedia('(max-width: 700px)').matches) document.querySelector('.controls').open = false;
+  </script>
 
   <footer class="back"><a href="../">All workbooks</a></footer>
 
   <script type="module">
     import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
     // ------------------------------------------------------------------
     // 1. SETUP: renderer, scene, camera, lights (same in every workbook)
     // ------------------------------------------------------------------
 
+    const canvas = document.querySelector('canvas.stage');
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+
+    const scene = new THREE.Scene();
+
+    const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
+    const view = new THREE.Vector3(10, 10, 15); // where the camera sits
+
+    // drag to look around, scroll to zoom
+    const orbit = new OrbitControls(camera, canvas);
+    orbit.enableDamping = true;
+    orbit.autoRotateSpeed = 0.5;
+
+    // a soft light from everywhere, and a low sun to bring out the hills
+    const ambient = new THREE.AmbientLight('white', 1);
+    const sun = new THREE.DirectionalLight('white', 2.5);
+    scene.add(ambient, sun);
+
+    // keep the picture sharp and unstretched when the window changes size
+    function resize() {
+      renderer.setSize(innerWidth, innerHeight, false);
+      camera.aspect = innerWidth / innerHeight;
+      camera.updateProjectionMatrix();
+      // on a tall, narrow screen (a phone), step back so everything fits the width
+      camera.position.copy(view).multiplyScalar(1 / Math.min(camera.aspect, 1));
+    }
+    addEventListener('resize', resize);
+    resize();
 
     // ------------------------------------------------------------------
-    // 2. THE THING: a terrain plane pushed up by heights from a Terrarium tile
+    // 2. THE THING: one square of real land, from elevation data
     // ------------------------------------------------------------------
 
+    const status = document.getElementById('status');
+    const facts = document.getElementById('facts');
+
+    const SIZE = 10; // the diorama is 10 units across
+    const ZOOM = 12; // at zoom 12 the world is 4096 × 4096 tiles: one tile is a few km
+
+    // ---- Step 1: which map tile is the place on? (this is the Mercator projection) ----
+    //
+    // Web maps flatten the globe with Gerardus Mercator's projection of 1569, cut it into a
+    // square, and split the square into tiles: 1 at zoom 0, 4 at zoom 1, 16 at zoom 2…
+    // These two lines turn latitude and longitude into a position on that square of tiles.
+
+    function tileOf(lat, lon, zoom) {
+      const φ = THREE.MathUtils.degToRad(lat);
+      const tiles = 2 ** zoom; // tiles across the world
+      const x = ((lon + 180) / 360) * tiles;
+      const y = ((1 - Math.log(Math.tan(φ) + 1 / Math.cos(φ)) / Math.PI) / 2) * tiles;
+      return { x, y }; // with fractions: the whole number is the tile, the rest is where in it
+    }
+
+    // ---- Step 2: fetch the tile's heights ----
+    //
+    // Terrarium tiles are PNG images, but their pixels hold heights, not colours:
+    //   height in metres = red × 256 + green + blue / 256 − 32768
+
+    async function loadHeights(zoom, x, y) {
+      const sources = [
+        `https://s3.amazonaws.com/elevation-tiles-prod/terrarium/${zoom}/${x}/${y}.png`, // live (free, no key)
+        `../assets/tiles/terrarium-${zoom}-${x}-${y}.png` // a saved copy, for no wifi (Crowborough only)
+      ];
+      for (const url of sources) {
+        try {
+          const response = await fetch(url);
+          if (!response.ok) continue;
+
+          // Draw the image onto a canvas to read its pixels. "colorSpaceConversion: none" tells the
+          // browser not to adjust the colours: these are heights, and one step off is 256 metres.
+          const image = await createImageBitmap(await response.blob(), { colorSpaceConversion: 'none' });
+          const canvas = document.createElement('canvas');
+          canvas.width = canvas.height = 256;
+          const context = canvas.getContext('2d', { willReadFrequently: true });
+          context.drawImage(image, 0, 0);
+          const pixels = context.getImageData(0, 0, 256, 256).data; // red, green, blue, alpha, red…
+
+          const heights = new Float32Array(256 * 256);
+          for (let i = 0; i < heights.length; i++) {
+            const [red, green, blue] = pixels.subarray(i * 4, i * 4 + 3);
+            heights[i] = Math.max(0, red * 256 + green + blue / 256 - 32768); // the sea is flat: 0 m
+          }
+          return heights;
+        } catch {
+          // offline, or blocked: try the next source
+        }
+      }
+      throw new Error('no heights for this tile');
+    }
+
+    // ---- Step 3: push a flat grid up into hills ----
+
+    // the base it all stands on
+    const plinth = new THREE.Mesh(
+      new THREE.BoxGeometry(SIZE, 0.6, SIZE),
+      new THREE.MeshStandardMaterial({ color: '#1f2a44', roughness: 0.8 })
+    );
+    plinth.position.y = -0.3;
+    scene.add(plinth);
+
+    const terrain = new THREE.Mesh(
+      new THREE.BufferGeometry(), // an empty shape for now: buildTerrain makes the real one
+      new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9 })
+    );
+    scene.add(terrain);
+
+    // a pin on the exact place (the tile is fixed, so the place can be anywhere on it)
+    const pin = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.03, 0.03, 1).translate(0, 0.5, 0), // a stick, standing on its foot
+      new THREE.MeshStandardMaterial({ color: 'white' })
+    );
+    scene.add(pin);
+
+    const cyan = new THREE.Color('#3bb4e5');
+    const blue = new THREE.Color('#4a5bb5');
+    const purple = new THREE.Color('#7b3fa0');
+
+    let pinHeight = 0; // the ground's height at the pin, before exaggerating
+
+    function buildTerrain(heights, metresAcross, pinColumn, pinRow) {
+      const lowest = heights.reduce((a, b) => Math.min(a, b));
+      const highest = heights.reduce((a, b) => Math.max(a, b));
+      const unitsPerMetre = SIZE / metresAcross; // true scale: a hill as tall as it really is
+
+      // a flat sheet with one corner (vertex) for every pixel of the tile: 256 × 256
+      const shape = new THREE.PlaneGeometry(SIZE, SIZE, 255, 255);
+      shape.rotateX(-Math.PI / 2); // lie it flat, with the top of the image to the north
+
+      const position = shape.attributes.position;
+      const colours = [];
+      for (let i = 0; i < position.count; i++) {
+        const row = Math.floor(i / 256);
+        const column = i % 256;
+
+        // lift each corner to its height; the edges stay down on the base, making the walls
+        const edge = row === 0 || row === 255 || column === 0 || column === 255;
+        position.setY(i, edge ? 0 : (heights[i] - lowest) * unitsPerMetre);
+
+        // colour by height: low ground cyan, high ground purple
+        const t = (heights[i] - lowest) / (highest - lowest || 1);
+        const colour = t < 0.5 ? cyan.clone().lerp(blue, t * 2) : blue.clone().lerp(purple, t * 2 - 1);
+        colours.push(colour.r, colour.g, colour.b);
+      }
+      shape.setAttribute('color', new THREE.Float32BufferAttribute(colours, 3));
+      shape.computeVertexNormals(); // work out which way each bit faces, for the lighting
+
+      terrain.geometry.dispose(); // throw away the old shape
+      terrain.geometry = shape;
+
+      // stand the pin on the place
+      pin.position.x = (pinColumn / 256 - 0.5) * SIZE;
+      pin.position.z = (pinRow / 256 - 0.5) * SIZE;
+      pinHeight = (heights[Math.floor(pinRow) * 256 + Math.floor(pinColumn)] - lowest) * unitsPerMetre;
+
+      return { lowest, highest };
+    }
+
+    // ---- All three steps, for one place ----
+
+    async function show(lat, lon) {
+      status.textContent = 'Loading heights…';
+      const tile = tileOf(lat, lon, ZOOM);
+      const x = Math.floor(tile.x);
+      const y = Math.floor(tile.y);
+
+      try {
+        const heights = await loadHeights(ZOOM, x, y);
+
+        // how wide is one tile on the ground? The equator's length, shared between the tiles,
+        // and shrunk towards the poles (Mercator stretches the map there; this undoes it)
+        const metresAcross = (40_075_016 * Math.cos(THREE.MathUtils.degToRad(lat))) / 2 ** ZOOM;
+
+        // where in the tile is the place? the fraction left over, × 256 pixels
+        const { lowest, highest } = buildTerrain(heights, metresAcross, (tile.x - x) * 256, (tile.y - y) * 256);
+        exaggerate.dispatchEvent(new Event('input')); // apply the slider to the new land
+
+        status.textContent = `${lat}, ${lon}`;
+        facts.innerHTML = `Tile ${ZOOM} / ${x} / ${y}<br>
+          ${(metresAcross / 1000).toFixed(1)} km across<br>
+          Heights ${Math.round(lowest)} m to ${Math.round(highest)} m`;
+        history.replaceState(null, '', `?lat=${lat}&lon=${lon}`); // so the address shares this place
+      } catch {
+        status.textContent = 'Couldn’t load heights for that place (offline?)';
+      }
+    }
 
     // ------------------------------------------------------------------
     // 3. CONTROLS: plain HTML inputs wired to the scene
     // ------------------------------------------------------------------
 
+    // run `change` with the slider's value now, and again whenever it moves
+    function onSlide(id, change) {
+      const input = document.getElementById(id);
+      const update = () => change(Number(input.value));
+      input.addEventListener('input', update);
+      update();
+    }
+
+    const exaggerate = document.getElementById('exaggerate');
+    onSlide('exaggerate', (times) => {
+      terrain.scale.y = times; // stretch the land upwards
+      pin.position.y = pinHeight * times;
+    });
+
+    onSlide('sunAngle', (degrees) => {
+      const angle = THREE.MathUtils.degToRad(degrees);
+      sun.position.set(Math.sin(angle) * 10, 4, Math.cos(angle) * 10); // low, circling the land
+    });
+
+    const turn = document.getElementById('turn');
+    turn.addEventListener('change', () => { orbit.autoRotate = turn.checked; });
+    orbit.autoRotate = turn.checked;
+
+    const place = document.getElementById('place');
+    function go() {
+      const [lat, lon] = place.value.split(/[\s,]+/).map(Number); // "51.06, 0.16" → [51.06, 0.16]
+      if (Math.abs(lat) < 85 && Math.abs(lon) <= 180) show(lat, lon); // Mercator stops at 85°
+      else status.textContent = 'Type a latitude and longitude, like 51.06, 0.16';
+    }
+    document.getElementById('go').addEventListener('click', go);
+    place.addEventListener('keydown', (event) => { if (event.key === 'Enter') go(); });
+
+    // the place from the address (workbook 2 sends the cat's destination), or Crowborough
+    const address = new URLSearchParams(location.search);
+    if (address.has('lat')) place.value = `${address.get('lat')}, ${address.get('lon')}`;
+    go();
 
     // ------------------------------------------------------------------
     // 4. LOOP: animate and render, every frame
     // ------------------------------------------------------------------
 
-
-    // PLACEHOLDER: proves the libraries load. Remove with the message above.
-    document.querySelector('.check').textContent = `three.js r${THREE.REVISION} loaded`;
+    renderer.setAnimationLoop(() => {
+      orbit.update(); // also turns the view slowly, when "Turn slowly" is on
+      renderer.render(scene, camera);
+    });
   </script>
 </body>
 </html>
