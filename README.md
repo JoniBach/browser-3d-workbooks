@@ -54,17 +54,27 @@ Then open the address it prints. Everything the workbooks need is in this repo, 
 offline (handy on conference wifi). Workbook 3 fetches live elevation tiles when it can and falls
 back to the one in `assets/tiles/`.
 
+## The slides
+
+The talk's slides are in [`slides/`](slides/): one Markdown file per slide, shown by a small
+viewer (`slides/index.html`). `slides/order.txt` sets the order. Anything after a line of `???`
+in a slide is speaker notes. Demo slides embed a live workbook with an `<iframe>`.
+
+Keys: ← → (or swipe) to move, **N** for notes, **F** for full screen. The address keeps your
+place (`slides/#12`).
+
 ## What's in the repo
 
 ```
 index.html             the list of workbooks
 01-atlas/ … 04-keychain/   one index.html each (placeholders for now)
+slides/                the talk: one .md per slide, order.txt, and the viewer
 shared/style.css       the Mercator look: navy, and the logo's cyan-blue-purple gradient
 assets/
   models/cat.glb       the walking cat (from cat-walk), 17 gait clips; we use "walk"
   brand/               the logo and mark, low-res PNGs from mercatordigital.com (reference only)
   tiles/               a Terrarium elevation tile for Crowborough (z12/2049/1370), the offline fallback
-vendor/                three.js r186 and JSCAD modeling 2.13, local copies (see vendor/README.md)
+vendor/                three.js r186, JSCAD modeling 2.13 and marked 18, local copies (see vendor/README.md)
 ```
 
 ## Status
