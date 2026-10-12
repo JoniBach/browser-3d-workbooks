@@ -25,40 +25,193 @@
     <h1>The spinning atlas</h1>
   </header>
 
-  <!-- PLACEHOLDER: remove when the workbook is written -->
-  <div class="placeholder">
-    <p><strong>Coming soon</strong></p>
-    <p>The Mercator logo comes to life as a globe.<br>New idea: Scene basics: renderer, camera, lights, a loop and sliders.</p>
-    <p class="check"></p>
+  <div class="controls">
+    <label>Spin</label>
+    <input id="spin" type="range" min="0" max="2" step="0.01" value="0">
+
+    <label>Grid lines</label>
+    <input id="lines" type="range" min="1" max="11" step="1" value="3">
+
+    <label>Line thickness</label>
+    <input id="thickness" type="range" min="0.005" max="0.06" step="0.005" value="0.03">
+
+    <label>Tilt</label>
+    <input id="tilt" type="range" min="0" max="45" step="0.5" value="0">
+
+    <label>Sun angle</label>
+    <input id="sunAngle" type="range" min="-180" max="180" step="1" value="-40">
+
+    <label>Sun brightness</label>
+    <input id="sunBrightness" type="range" min="0" max="5" step="0.1" value="2">
+
+    <label>Triangles</label>
+    <input id="detail" type="range" min="3" max="64" step="1" value="64">
+
+    <label><input id="wireframe" type="checkbox"> Show the triangles</label>
   </div>
 
   <footer class="back"><a href="../">All workbooks</a></footer>
 
   <script type="module">
     import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
     // ------------------------------------------------------------------
     // 1. SETUP: renderer, scene, camera, lights (same in every workbook)
     // ------------------------------------------------------------------
 
+    const canvas = document.querySelector('canvas.stage');
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+
+    const scene = new THREE.Scene();
+
+    const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
+    camera.position.set(0, 0, 4.5);
+
+    // drag to look around, scroll to zoom
+    const orbit = new OrbitControls(camera, canvas);
+    orbit.enableDamping = true;
+
+    // a soft light from everywhere, and a sun from one side
+    const ambient = new THREE.AmbientLight('white', 1.2);
+    const sun = new THREE.DirectionalLight('white', 2);
+    scene.add(ambient, sun);
+
+    // keep the picture sharp and unstretched when the window changes size
+    function resize() {
+      renderer.setSize(innerWidth, innerHeight, false);
+      camera.aspect = innerWidth / innerHeight;
+      camera.updateProjectionMatrix();
+    }
+    addEventListener('resize', resize);
+    resize();
 
     // ------------------------------------------------------------------
-    // 2. THE THING: SphereGeometry and LineSegments in the logo's gradient
+    // 2. THE THING: the Mercator logo as a globe
+    //    a coloured ball, and a grid of white rings around it
     // ------------------------------------------------------------------
 
+    const globe = new THREE.Group(); // the ball and the grid, so they tilt together
+    scene.add(globe);
+
+    // The ball: coloured cyan → blue → purple from left to right, like the logo.
+    // Each corner (vertex) of the sphere gets a colour from where it sits left to right.
+    const cyan = new THREE.Color('#3bb4e5');
+    const blue = new THREE.Color('#4a5bb5');
+    const purple = new THREE.Color('#7b3fa0');
+
+    const ball = new THREE.Mesh(
+      new THREE.BufferGeometry(), // an empty shape for now: buildBall, below, makes the real one
+      new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6 })
+    );
+    globe.add(ball);
+
+    // `detail` is how many slices round the ball: more slices, more triangles, smoother
+    function buildBall(detail) {
+      const shape = new THREE.SphereGeometry(1, detail, Math.ceil(detail / 2));
+
+      const colours = [];
+      const position = shape.attributes.position;
+      for (let i = 0; i < position.count; i++) {
+        const t = (position.getX(i) + 1) / 2; // 0 on the left edge, 1 on the right
+        const colour = t < 0.5
+          ? cyan.clone().lerp(blue, t * 2)
+          : blue.clone().lerp(purple, t * 2 - 1);
+        colours.push(colour.r, colour.g, colour.b);
+      }
+      shape.setAttribute('color', new THREE.Float32BufferAttribute(colours, 3));
+
+      ball.geometry.dispose(); // throw away the old shape
+      ball.geometry = shape;
+    }
+
+    // The grid: every line on a globe is a ring (a torus).
+    //   meridians run pole to pole: rings stood up and turned round the axis
+    //   parallels run round the globe: flat rings, smaller nearer the poles
+    const grid = new THREE.Group();
+    globe.add(grid);
+    const lineMaterial = new THREE.MeshBasicMaterial({ color: 'white' });
+
+    function ring(radius, thickness) {
+      return new THREE.Mesh(new THREE.TorusGeometry(radius, thickness, 8, 128), lineMaterial);
+    }
+
+    function buildGrid(lines, thickness) {
+      // throw away the old rings
+      grid.children.forEach((old) => old.geometry.dispose());
+      grid.clear();
+
+      // meridians: each ring makes two lines (front and back), evenly spaced
+      for (let i = 0; i <= lines; i++) {
+        const meridian = ring(1.002, thickness);
+        meridian.rotation.y = (i / (lines + 1)) * Math.PI;
+        grid.add(meridian);
+      }
+
+      // parallels: evenly spaced from top to bottom, like the rows in the logo
+      for (let i = 1; i <= lines; i++) {
+        const y = -1 + (2 * i) / (lines + 1); // height up the globe, -1 to 1
+        const parallel = ring(Math.sqrt(1 - y * y) + 0.002, thickness);
+        parallel.rotation.x = Math.PI / 2; // lie it flat
+        parallel.position.y = y;
+        grid.add(parallel);
+      }
+    }
 
     // ------------------------------------------------------------------
     // 3. CONTROLS: plain HTML inputs wired to the scene
     // ------------------------------------------------------------------
 
+    // run `change` with the slider's value now, and again whenever it moves
+    function onSlide(id, change) {
+      const input = document.getElementById(id);
+      const update = () => change(Number(input.value));
+      input.addEventListener('input', update);
+      update();
+    }
+
+    let spin = 0; // radians per second, used in the loop
+    onSlide('spin', (value) => { spin = value; });
+
+    const lines = document.getElementById('lines');
+    const thickness = document.getElementById('thickness');
+    const rebuild = () => buildGrid(Number(lines.value), Number(thickness.value));
+    lines.addEventListener('input', rebuild);
+    thickness.addEventListener('input', rebuild);
+    rebuild();
+
+    onSlide('tilt', (degrees) => { globe.rotation.z = THREE.MathUtils.degToRad(degrees); });
+
+    onSlide('sunAngle', (degrees) => {
+      const angle = THREE.MathUtils.degToRad(degrees);
+      sun.position.set(Math.sin(angle) * 5, 2, Math.cos(angle) * 5); // circle round the globe
+    });
+
+    onSlide('sunBrightness', (value) => { sun.intensity = value; });
+
+    // every 3D shape is made of flat triangles: choose how many, and show them
+    onSlide('detail', buildBall);
+
+    const wireframe = document.getElementById('wireframe');
+    wireframe.addEventListener('change', () => {
+      ball.material.wireframe = wireframe.checked;
+      grid.visible = !wireframe.checked; // the grid would hide the triangles
+    });
 
     // ------------------------------------------------------------------
     // 4. LOOP: animate and render, every frame
     // ------------------------------------------------------------------
 
+    let lastTime = 0;
+    renderer.setAnimationLoop((time) => {
+      const seconds = (time - lastTime) / 1000; // since the last frame
+      lastTime = time;
 
-    // PLACEHOLDER: proves the libraries load. Remove with the message above.
-    document.querySelector('.check').textContent = `three.js r${THREE.REVISION} loaded`;
+      grid.rotation.y += spin * seconds; // radians per second
+      orbit.update();
+      renderer.render(scene, camera);
+    });
   </script>
 </body>
 </html>

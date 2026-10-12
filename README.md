@@ -67,7 +67,7 @@ vendor/                three.js r186 and JSCAD modeling 2.13, local copies (see 
 ## Status
 
 - [x] Repo, theme, placeholders and assets
-- [ ] 1. The spinning atlas
+- [x] 1. The spinning atlas
 - [ ] 2. The cat on a tiny planet
 - [ ] 3. The diorama
 - [ ] 4. The logo keychain
