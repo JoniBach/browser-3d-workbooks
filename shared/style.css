@@ -118,6 +118,21 @@ footer.back {
 }
 footer.back a { color: var(--grey); }
 
+/* an error, shown on screen by shared/errors.js */
+.error {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  max-width: min(480px, 85vw);
+  margin: 0;
+  padding: 14px 18px;
+  border-radius: 10px;
+  color: white;
+  background: #9b2c3a;
+  z-index: 10;
+}
+
 /* ---- Phones: the controls become a bar along the bottom that folds away ---- */
 
 @media (max-width: 700px) {

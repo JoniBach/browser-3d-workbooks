@@ -67,9 +67,10 @@ place (`slides/#12`).
 
 ```
 index.html             the list of workbooks
-01-atlas/ … 04-keychain/   one index.html each (placeholders for now)
+01-atlas/ … 04-keychain/   one index.html each
 slides/                the talk: one .md per slide, order.txt, and the viewer
 shared/style.css       the Mercator look: navy, and the logo's cyan-blue-purple gradient
+shared/errors.js       shows any error on screen (phones have no console)
 assets/
   models/cat.glb       the walking cat (from cat-walk), 17 gait clips; we use "walk"
   brand/               the logo and mark, low-res PNGs from mercatordigital.com (reference only)

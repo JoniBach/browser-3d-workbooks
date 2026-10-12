@@ -1,4 +1,4 @@
-## Who was Mercator?
+## Our story: Mercator
 
 - **Gerardus Mercator**, Flemish mapmaker, 1512 to 1594
 - **1569**: a world map that sailors could steer by, with straight lines as constant compass bearings

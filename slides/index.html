@@ -52,16 +52,27 @@
     main.demo { justify-content: flex-start; padding-top: 4vh; padding-bottom: 7vh; }
     main.demo h2 { font-size: 1.2em; margin-bottom: 0.4em; }
 
-    /* a live workbook on the slide: <iframe class="demo" src="../01-atlas/"></iframe> */
-    main iframe.demo {
+    /* a live workbook on the slide: <iframe class="demo" src="../01-atlas/"></iframe>
+       The viewer wraps it in a frame that says "Loading…" until the workbook covers it. */
+    main .frame {
+      position: relative;
       flex: 1;
-      width: 100%;
       min-height: 0;
-      border: 0;
       border-radius: 0.5em;
+      overflow: hidden;
       box-shadow: 0 4px 24px rgba(31, 42, 68, 0.15);
-      background: var(--paper);
+      background: white;
     }
+    main .frame::before {
+      content: "Loading the workbook…";
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-content: center;
+      color: var(--grey);
+    }
+    main iframe.demo { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+    main .open { font-size: 0.6em; margin-top: 0.4em; }
 
     /* ---- Speaker notes (press N) ---- */
     aside {
@@ -80,15 +91,25 @@
 
     /* ---- Progress bar and slide number ---- */
     .progress { position: fixed; left: 0; bottom: 0; height: 5px; background: var(--gradient); transition: width 0.3s; }
-    .number { position: fixed; right: 24px; bottom: 16px; font-size: 14px; color: var(--grey); }
+    nav { position: fixed; right: 16px; bottom: 10px; display: flex; align-items: center; gap: 8px; z-index: 2; }
+    nav .number { font-size: 14px; color: var(--grey); min-width: 4em; text-align: center; }
+    nav button {
+      width: 44px; height: 44px; border: 0; border-radius: 50%;
+      font-size: 26px; line-height: 1; color: white; background: var(--navy); cursor: pointer;
+    }
     .help { position: fixed; left: 24px; bottom: 16px; font-size: 14px; color: var(--grey); }
+    @media (max-width: 700px) { .help { display: none; } }
   </style>
 </head>
 <body>
   <main></main>
   <aside hidden></aside>
   <div class="progress"></div>
-  <div class="number"></div>
+  <nav>
+    <button id="previous" aria-label="Previous slide">‹</button>
+    <span class="number"></span>
+    <button id="next" aria-label="Next slide">›</button>
+  </nav>
   <div class="help">← → to move · N notes · F full screen</div>
 
   <script type="module">
@@ -98,6 +119,7 @@
     //   order.txt lists the slide files, one per line, in the order they're shown
     //   each slide is a Markdown file; anything after a line of ??? is speaker notes
     //   a first line of <!-- class: title --> gives the slide a special layout
+    //   (<!-- class: demo --> for a slide with a live workbook in an <iframe class="demo">)
 
     const main = document.querySelector('main');
     const notes = document.querySelector('aside');
@@ -118,15 +140,30 @@
       const slide = slides[current];
       main.className = slide.layout;
       main.innerHTML = slide.html;
+
+      // live workbooks: frame them, link to them, and let the arrow keys still change slides
+      for (const demo of main.querySelectorAll('iframe.demo')) {
+        const frame = document.createElement('div');
+        frame.className = 'frame';
+        demo.replaceWith(frame);
+        frame.append(demo);
+        frame.insertAdjacentHTML('afterend',
+          `<p class="open"><a href="${demo.getAttribute('src')}" target="_blank">Open the workbook on its own ↗</a></p>`);
+        demo.addEventListener('load', () => {
+          demo.contentWindow.addEventListener('keydown', (event) => {
+            if (!['INPUT', 'TEXTAREA'].includes(event.target.tagName)) onKey(event);
+          });
+        });
+      }
       notes.innerHTML = slide.notes || '<p>(no notes)</p>';
       document.querySelector('.number').textContent = `${current + 1} / ${slides.length}`;
       document.querySelector('.progress').style.width = `${((current + 1) / slides.length) * 100}%`;
       history.replaceState(null, '', `#${current + 1}`); // reloading keeps your place
     }
 
-    // ---- Moving around: keys, and swipes on a phone ----
+    // ---- Moving around: keys, the ‹ › buttons, and swipes on a phone ----
 
-    addEventListener('keydown', (event) => {
+    function onKey(event) {
       if (['ArrowRight', 'PageDown', ' '].includes(event.key)) show(current + 1);
       else if (['ArrowLeft', 'PageUp'].includes(event.key)) show(current - 1);
       else if (event.key === 'Home') show(0);
@@ -135,12 +172,18 @@
       else if (event.key === 'f') document.fullscreenElement ? document.exitFullscreen() : document.body.requestFullscreen();
       else return;
       event.preventDefault();
-    });
+    }
+    addEventListener('keydown', onKey);
+
+    document.getElementById('previous').addEventListener('click', () => show(current - 1));
+    document.getElementById('next').addEventListener('click', () => show(current + 1));
 
     let touchStart = null;
     addEventListener('touchstart', (event) => { touchStart = event.touches[0].clientX; });
     addEventListener('touchend', (event) => {
+      if (touchStart === null) return;
       const distance = event.changedTouches[0].clientX - touchStart;
+      touchStart = null;
       if (Math.abs(distance) > 60) show(current + (distance < 0 ? 1 : -1));
     });
 
