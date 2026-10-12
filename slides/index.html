@@ -148,7 +148,7 @@
         demo.replaceWith(frame);
         frame.append(demo);
         frame.insertAdjacentHTML('afterend',
-          `<p class="open"><a href="${demo.getAttribute('src')}" target="_blank">Open the workbook on its own ↗</a></p>`);
+          `<p class="open"><a href="${demo.getAttribute('src')}" target="_blank">Open it on its own ↗</a></p>`);
         demo.addEventListener('load', () => {
           demo.contentWindow.addEventListener('keydown', (event) => {
             if (!['INPUT', 'TEXTAREA'].includes(event.target.tagName)) onKey(event);

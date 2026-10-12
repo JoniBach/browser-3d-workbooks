@@ -1,14 +1,14 @@
 <!-- class: title -->
 
-# Try it yourself
+# Thank you
 
 **jonibach.github.io/browser-3d-workbooks**
 
-- Four workbooks, each one HTML file
+- Five workbooks (0 to 4), each one HTML file
 - Open one, then *View source*: that's all the code
-- Change a number and see what happens
+- Make your own diorama with Claude Code
 
-Thank you. Questions?
+Questions?
 
 ???
 

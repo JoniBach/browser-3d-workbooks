@@ -26,4 +26,9 @@
 25-demo-keychain.md
 26-printing.md
 27-what-we-skipped.md
-28-thanks.md
+28-exercise-your-turn.md
+29-exercise-steps.md
+30-exercise-plan.md
+31-exercise-example.md
+32-exercise-make-it-yours.md
+33-thanks.md
