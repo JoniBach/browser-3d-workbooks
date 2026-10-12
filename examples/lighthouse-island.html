@@ -1,0 +1,246 @@
+<!doctype html>
+<!--
+  A small 3D diorama in one HTML file. No installs: double-click to open it in a browser.
+  three.js comes from a CDN (jsDelivr), so you need an internet connection.
+
+  A worked example of starter/diorama.html filled in from a brief.
+
+  The brief for this one: "A tiny island with a lighthouse. As night falls, the beam comes on."
+    The world:   an island on a round plinth, in the sea
+    The focus:   the lighthouse
+    The motion:  the beam sweeping round
+    The palette: navy plinth, sea blue, sand, grass green, white and red
+    The reveal:  slide Time of day to night and the beam lights up
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lighthouse island · a 3D diorama</title>
+
+  <style>
+    /* the page: the 3D fills the window, a title top left, controls top right */
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, sans-serif; color: #1f2a44; background: #f7f8fb; }
+    canvas.stage { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+    header { position: fixed; top: 24px; left: 28px; pointer-events: none; }
+    header h1 { margin: 0; font-size: 28px; }
+    header p { margin: 6px 0 0; color: #6b7280; }
+    .controls {
+      position: fixed; top: 24px; right: 24px; width: 260px; padding: 16px 18px;
+      border-radius: 12px; background: rgba(255, 255, 255, 0.9); box-shadow: 0 4px 24px rgba(31, 42, 68, 0.12);
+    }
+    .controls summary { font-weight: 700; cursor: pointer; }
+    .controls label { display: block; margin: 10px 0 4px; font-size: 13px; color: #6b7280; }
+    .controls input[type="range"] { width: 100%; }
+    .error {
+      position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); max-width: 85vw;
+      padding: 14px 18px; border-radius: 10px; color: white; background: #9b2c3a;
+    }
+    /* phones: the controls become a bar along the bottom that folds away */
+    @media (max-width: 700px) {
+      .controls { top: auto; left: 12px; right: 12px; bottom: 12px; width: auto; max-height: 40vh; overflow-y: auto; }
+    }
+  </style>
+
+  <script>
+    // if anything goes wrong, say so on screen (phones have no console to look in)
+    function showError(message) {
+      const box = document.querySelector('.error') ?? document.body.appendChild(document.createElement('p'));
+      box.className = 'error';
+      box.textContent = `Something went wrong: ${message}`;
+    }
+    addEventListener('error', (event) => showError(event.message));
+    addEventListener('unhandledrejection', (event) => showError(event.reason?.message ?? event.reason));
+  </script>
+
+  <!-- "three" means three.js from the CDN, pinned to one version so it never changes under us -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <canvas class="stage"></canvas>
+
+  <header>
+    <h1>Lighthouse island</h1>
+    <p>Slide the time of day to night</p>
+  </header>
+
+  <details class="controls" open>
+    <summary>Controls</summary>
+
+    <label>Time of day</label>
+    <input id="time" type="range" min="0" max="24" step="0.1" value="14">
+
+    <label>Beam speed</label>
+    <input id="beamSpeed" type="range" min="0" max="4" step="0.1" value="1.5">
+
+    <label>Spin</label>
+    <input id="spin" type="range" min="0" max="2" step="0.05" value="0.3">
+  </details>
+  <script>
+    // on phones, start with the controls folded away (tap "Controls" to open them)
+    if (matchMedia('(max-width: 700px)').matches) document.querySelector('.controls').open = false;
+  </script>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    // ------------------------------------------------------------------
+    // 1. SETUP: renderer, scene, camera, lights (the same in every diorama)
+    // ------------------------------------------------------------------
+
+    const canvas = document.querySelector('canvas.stage');
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+
+    const scene = new THREE.Scene();
+
+    const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
+    const view = new THREE.Vector3(6, 5, 9); // where the camera sits
+
+    // drag to look around, scroll to zoom
+    const orbit = new OrbitControls(camera, canvas);
+    orbit.target.set(0, 0.6, 0);
+    orbit.enableDamping = true;
+
+    // a soft light from everywhere, and a sun
+    const ambient = new THREE.AmbientLight('white', 1);
+    const sun = new THREE.DirectionalLight('white', 2);
+    scene.add(ambient, sun);
+
+    // keep the picture sharp and unstretched when the window changes size
+    function resize() {
+      renderer.setSize(innerWidth, innerHeight, false);
+      camera.aspect = innerWidth / innerHeight;
+      camera.updateProjectionMatrix();
+      // on a tall, narrow screen (a phone), step back so everything fits the width
+      camera.position.copy(view).multiplyScalar(1 / Math.min(camera.aspect, 1));
+    }
+    addEventListener('resize', resize);
+    resize();
+
+    // ------------------------------------------------------------------
+    // 2. THE THING: an island with a lighthouse, on a plinth
+    // ------------------------------------------------------------------
+
+    const PALETTE = {
+      plinth: '#1f2a44',
+      sea: '#3b8fd1',
+      sand: '#e8d3a2',
+      grass: '#7bbf6a',
+      tree: '#3f8f5a',
+      white: '#ffffff',
+      red: '#d64545',
+      daySky: '#cfe6f7',
+      nightSky: '#0e1630'
+    };
+
+    // a little helper: a shape and a colour make a mesh. Few sides and flat shading look low poly.
+    function solid(shape, colour) {
+      return new THREE.Mesh(shape, new THREE.MeshStandardMaterial({ color: colour, flatShading: true }));
+    }
+
+    const world = new THREE.Group(); // everything on the plinth, so it can turn together
+    scene.add(world);
+
+    // the plinth, and the sea on top of it
+    const plinth = solid(new THREE.CylinderGeometry(3.2, 3.4, 0.6, 48), PALETTE.plinth);
+    plinth.position.y = -0.4;
+    const sea = solid(new THREE.CylinderGeometry(3, 3, 0.2, 48), PALETTE.sea);
+    world.add(plinth, sea);
+
+    // the island: a seven-sided lump of sand with grass on top
+    const sand = solid(new THREE.CylinderGeometry(1.2, 1.5, 0.4, 7), PALETTE.sand);
+    sand.position.y = 0.2;
+    const grass = solid(new THREE.CylinderGeometry(1.0, 1.15, 0.15, 7), PALETTE.grass);
+    grass.position.y = 0.45;
+    world.add(sand, grass);
+
+    // trees: cones on the grass, in a ring around the lighthouse
+    for (let i = 0; i < 5; i++) {
+      const angle = (i / 5) * Math.PI * 2 + 0.4;
+      const tree = solid(new THREE.ConeGeometry(0.16, 0.45, 6), PALETTE.tree);
+      tree.position.set(Math.cos(angle) * 0.7, 0.75, Math.sin(angle) * 0.7);
+      world.add(tree);
+    }
+
+    // the lighthouse: a white tower with a red band, and a lamp on top
+    const tower = solid(new THREE.CylinderGeometry(0.16, 0.24, 1.2, 12), PALETTE.white);
+    tower.position.y = 1.1;
+    const band = solid(new THREE.CylinderGeometry(0.205, 0.215, 0.2, 12), PALETTE.red);
+    band.position.y = 1.1;
+    const roof = solid(new THREE.ConeGeometry(0.22, 0.25, 12), PALETTE.red);
+    roof.position.y = 1.95;
+    const lamp = new THREE.Mesh(
+      new THREE.SphereGeometry(0.12, 16, 8),
+      new THREE.MeshStandardMaterial({ color: '#fff3b0', emissive: '#ffd84a', emissiveIntensity: 0 })
+    );
+    lamp.position.y = 1.78;
+    world.add(tower, band, roof, lamp);
+
+    // the beam: a long see-through cone, pointing sideways from the lamp, that turns
+    const beam = new THREE.Mesh(
+      new THREE.ConeGeometry(0.35, 3, 24, 1, true).translate(0, -1.5, 0).rotateZ(Math.PI / 2),
+      new THREE.MeshBasicMaterial({ color: '#fff3b0', transparent: true, opacity: 0, depthWrite: false })
+    );
+    beam.position.y = 1.78;
+    world.add(beam);
+
+    // ------------------------------------------------------------------
+    // 3. CONTROLS: plain HTML inputs wired to the scene
+    // ------------------------------------------------------------------
+
+    // run `change` with the slider's value now, and again whenever it moves
+    function onSlide(id, change) {
+      const input = document.getElementById(id);
+      const update = () => change(Number(input.value));
+      input.addEventListener('input', update);
+      update();
+    }
+
+    // time of day: the sun circles the island; at night the sky darkens and the lamp lights up
+    const daySky = new THREE.Color(PALETTE.daySky);
+    const nightSky = new THREE.Color(PALETTE.nightSky);
+    onSlide('time', (hours) => {
+      const angle = ((hours - 6) / 24) * Math.PI * 2; // 6am rises in the east, 6pm sets in the west
+      sun.position.set(Math.cos(angle) * 8, Math.sin(angle) * 8, 3);
+      const daylight = THREE.MathUtils.clamp(Math.sin(angle) * 2, 0, 1); // 0 at night, 1 by day
+      sun.intensity = 2 * daylight;
+      ambient.intensity = 0.25 + 0.75 * daylight;
+      scene.background = nightSky.clone().lerp(daySky, daylight);
+      lamp.material.emissiveIntensity = 2 * (1 - daylight);
+      beam.material.opacity = 0.35 * (1 - daylight);
+      document.querySelector('header').style.color = daylight < 0.5 ? 'white' : ''; // readable at night
+    });
+
+    let beamSpeed = 0;
+    onSlide('beamSpeed', (value) => { beamSpeed = value; });
+
+    let spin = 0;
+    onSlide('spin', (value) => { spin = value; });
+
+    // ------------------------------------------------------------------
+    // 4. LOOP: animate and render, every frame
+    // ------------------------------------------------------------------
+
+    let lastTime = 0;
+    renderer.setAnimationLoop((time) => {
+      const seconds = Math.min((time - lastTime) / 1000, 0.1); // since the last frame
+      lastTime = time;
+
+      beam.rotation.y += beamSpeed * seconds;
+      world.rotation.y += spin * seconds;
+      orbit.update();
+      renderer.render(scene, camera);
+    });
+  </script>
+</body>
+</html>

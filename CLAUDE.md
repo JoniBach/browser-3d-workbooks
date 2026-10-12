@@ -1,9 +1,12 @@
 # Making your own 3D diorama with Claude Code
 
 This repo teaches 3D in the browser with small workbooks (`00-hello-sphere/` to `04-keychain/`).
-This file is for Claude Code: when someone gives you a **brief** ("a tiny island with a
-lighthouse", "my desk at work", "a fox in a snowy forest"), turn it into **one standalone HTML
-file** they can double-click to open. No installs, no build, no npm.
+This file is for Claude Code: help someone make **their own** small 3D world, from their own
+idea, as **one standalone HTML file** they can double-click to open. No installs, no build, no
+npm.
+
+The person's idea is the point. Don't decide what they're making for them, and don't reuse the
+lighthouse example unless they ask for a lighthouse.
 
 ## The result
 
@@ -15,20 +18,36 @@ file** they can double-click to open. No installs, no build, no npm.
 
 ## How to work
 
-1. **Read the brief and decide five things.** Make sensible choices yourself rather than asking;
-   only ask if the brief could mean two very different worlds.
-   - **The world**: what sits on the plinth (keep it inside a radius of about 3 units)
-   - **The focus**: one character or object the eye goes to
-   - **The motion**: one thing that moves (turns, walks, sweeps, bobs, orbits)
-   - **The palette**: 4 to 7 colours, named in a `PALETTE` object
-   - **The reveal**: the moment it comes to life, tied to a control (night falls, the light
-     comes on, the character sets off)
-2. **Copy `starter/diorama.html`** and keep its structure. Write the brief and the five
-   decisions in the comment at the top of the file.
-3. **Rewrite section 2 (THE THING) and section 3 (CONTROLS)** for the brief. Leave sections 1 and 4
-   almost as they are: that sameness is the point of the framework.
-4. **Check it** (see "Checking your work"), then tell the person the file's path and to
-   double-click it. Mention what the controls do and what the reveal is.
+1. **Ask for their idea first.** If the person hasn't described what they want ("make me a
+   diorama", "let's try this"), ask what small world they'd like to see. You can offer a few
+   ideas to get them going, as suggestions only, for example:
+   - a tiny island with a lighthouse that lights up at night
+   - their desk at work, with a coffee steaming
+   - a fox in a snowy forest under the northern lights
+   - their home town as real terrain, from elevation data
+   - a robot dancing on a tiny planet
+
+   Then wait for their answer. Don't pick one for them.
+2. **Turn their idea into a short plan, and check it with them.** Play back five decisions in a
+   few lines, and ask if they'd like to change anything before you build:
+   - **The world**: what sits on the plinth
+   - **The focus**: the one character or object the eye goes to
+   - **The motion**: the one thing that moves (turns, walks, sweeps, bobs, orbits)
+   - **The palette**: 4 to 7 colours
+   - **The reveal**: the moment it comes to life, and the control that does it (night falls,
+     the light comes on, the character sets off)
+
+   Fill gaps in their idea with suggestions in the plan, not silent choices. If they've already
+   given a detailed brief and say "just make it", go ahead.
+3. **Copy `starter/diorama.html`**: a blank plinth with the four sections ready. Write their
+   brief and the five decisions in the comment at the top.
+4. **Fill in section 2 (THE THING) and section 3 (CONTROLS)** for their idea. Leave sections 1
+   and 4 almost as they are: that sameness is the point of the framework.
+   `examples/lighthouse-island.html` shows a finished one, for how the pieces fit together
+   (day and night, a glowing light, a moving beam). Borrow techniques from it, not its content.
+5. **Check it** (see "Checking your work"), then tell them the file's path and to double-click
+   it. Say what the controls do and what the reveal is, and ask what they'd like to change: the
+   first version is a starting point for them to shape.
 
 ## The four sections (every file has exactly these, in this order)
 
@@ -43,7 +62,7 @@ Each section starts with the same banner comment as the starter:
 
 ```js
 // ------------------------------------------------------------------
-// 2. THE THING: an island with a lighthouse, on a plinth
+// 2. THE THING: the world on the plinth
 // ------------------------------------------------------------------
 ```
 
@@ -129,9 +148,9 @@ After redrawing the canvas, set `skin.needsUpdate = true`.
 
 ### Day and night
 
-The starter's Time of day slider moves the sun, dims the lights, blends the sky colour and
-turns on glowing things (`emissive` / `emissiveIntensity` on a `MeshStandardMaterial`). Reuse it
-for any brief with a reveal at night.
+`examples/lighthouse-island.html` has a Time of day slider that moves the sun, dims the lights,
+blends the sky colour and turns on glowing things (`emissive` / `emissiveIntensity` on a
+`MeshStandardMaterial`). Use the same technique for any idea with a reveal at night.
 
 ### A character that walks (glTF models)
 
@@ -235,6 +254,8 @@ Grid lines on a globe are rings: `TorusGeometry`, as in `01-atlas/`.
 | `02-cat-planet/` | Loading a GLB, playing and blending animations, a tiny planet |
 | `03-diorama/` | Real elevation data into terrain, a plinth with walls |
 | `04-keychain/` | JSCAD booleans, and exporting an STL to print |
+
+`examples/lighthouse-island.html` is a finished standalone diorama made from the starter.
 
 The workbooks load three.js from `vendor/` (so they work offline) and share `shared/style.css`.
 Generated dioramas don't: they use the CDN and carry their own styles, so the file works on

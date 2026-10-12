@@ -56,15 +56,15 @@ back to the one in `assets/tiles/`.
 
 ## Make your own diorama with Claude Code
 
-Clone this repo, open [Claude Code](https://claude.com/claude-code) in it, and describe a small
-world:
-
-> Make me a diorama of a fox in a snowy forest. At night the northern lights come out.
+Clone this repo, open [Claude Code](https://claude.com/claude-code) in it, and ask it to help you
+make a diorama. It will ask what small world you'd like, suggest a plan (what's on the plinth,
+what moves, the colours, the moment it comes to life) for you to change, and then build it.
 
 [`CLAUDE.md`](CLAUDE.md) tells Claude how: the same four sections as the workbooks, in one HTML
 file that loads three.js from a CDN, saved in `my-dioramas/`. Double-click the file to open it:
-no installs, no build. [`starter/diorama.html`](starter/diorama.html) is the template it
-starts from (a lighthouse island with day and night), and works the same way.
+no installs, no build. It starts from [`starter/diorama.html`](starter/diorama.html), a blank
+plinth. [`examples/lighthouse-island.html`](examples/lighthouse-island.html) is a finished one,
+with day and night.
 
 ## The slides
 
@@ -81,7 +81,8 @@ place (`slides/#12`).
 index.html             the list of workbooks
 00-hello-sphere/ … 04-keychain/   one index.html each
 CLAUDE.md              how Claude Code turns a brief into your own diorama
-starter/diorama.html   the standalone template: one file, three.js from a CDN
+starter/diorama.html   the standalone template: a blank plinth, three.js from a CDN
+examples/              finished standalone dioramas (a lighthouse island)
 slides/                the talk: one .md per slide, order.txt, and the viewer
 shared/style.css       the look: navy, and the logo's cyan-blue-purple gradient
 shared/errors.js       shows any error on screen (phones have no console)
