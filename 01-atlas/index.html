@@ -25,7 +25,9 @@
     <h1>The spinning atlas</h1>
   </header>
 
-  <div class="controls">
+  <details class="controls" open>
+    <summary>Controls</summary>
+
     <label>Spin</label>
     <input id="spin" type="range" min="0" max="2" step="0.01" value="0">
 
@@ -48,7 +50,11 @@
     <input id="detail" type="range" min="3" max="64" step="1" value="64">
 
     <label><input id="wireframe" type="checkbox"> Show the triangles</label>
-  </div>
+  </details>
+  <script>
+    // on phones, start with the controls folded away (tap "Controls" to open them)
+    if (matchMedia('(max-width: 700px)').matches) document.querySelector('.controls').open = false;
+  </script>
 
   <footer class="back"><a href="../">All workbooks</a></footer>
 
@@ -83,6 +89,8 @@
       renderer.setSize(innerWidth, innerHeight, false);
       camera.aspect = innerWidth / innerHeight;
       camera.updateProjectionMatrix();
+      // on a tall, narrow screen (a phone), step back so the globe fits the width
+      camera.position.setLength(4.5 / Math.min(camera.aspect, 1));
     }
     addEventListener('resize', resize);
     resize();

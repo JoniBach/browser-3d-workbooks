@@ -69,6 +69,10 @@ header.title h1::after {
   background: rgba(255, 255, 255, 0.9);
   box-shadow: 0 4px 24px rgba(31, 42, 68, 0.12);
 }
+.controls summary {
+  font-weight: 700;
+  cursor: pointer;
+}
 .controls label {
   display: block;
   margin: 10px 0 4px;
@@ -101,6 +105,27 @@ footer.back {
   font-size: 13px;
 }
 footer.back a { color: var(--grey); }
+
+/* ---- Phones: the controls become a bar along the bottom that folds away ---- */
+
+@media (max-width: 700px) {
+  header.title { top: 16px; left: 18px; }
+  header.title h1 { font-size: 22px; }
+
+  .controls {
+    top: auto;
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+    width: auto;
+    max-height: 40vh;
+    background: rgba(255, 255, 255, 0.75);
+    overflow-y: auto;
+  }
+
+  /* the bottom is taken by the controls: the back link goes to the top right */
+  footer.back { top: 22px; right: 18px; bottom: auto; left: auto; }
+}
 
 /* placeholder message until a workbook is written */
 .placeholder {
