@@ -25,41 +25,253 @@
     <h1>The cat on a tiny planet</h1>
   </header>
 
-  <!-- PLACEHOLDER: remove when the workbook is written -->
-  <div class="placeholder">
-    <p><strong>Coming soon</strong></p>
-    <p>Type a place and the cat walks there across the globe.<br>New idea: Loading a model (GLB) and playing one of its animations.</p>
-    <p class="check"></p>
-  </div>
+  <details class="controls" open>
+    <summary>Controls</summary>
+
+    <label>Walk to (latitude, longitude)</label>
+    <input id="place" type="text" value="40.71, -74.01">
+    <button id="go">Walk</button>
+
+    <label>Or pick a place</label>
+    <div class="places">
+      <button data-place="51.06, 0.16">Crowborough</button>
+      <button data-place="40.71, -74.01">New York</button>
+      <button data-place="35.68, 139.69">Tokyo</button>
+      <button data-place="-33.87, 151.21">Sydney</button>
+    </div>
+
+    <label>Walk speed</label>
+    <input id="speed" type="range" min="0.5" max="3" step="0.1" value="2">
+
+    <p id="status">Loading the cat…</p>
+    <a id="zoomIn" href="../03-diorama/" hidden>Zoom in on this place →</a>
+  </details>
+  <script>
+    // on phones, start with the controls folded away (tap "Controls" to open them)
+    if (matchMedia('(max-width: 700px)').matches) document.querySelector('.controls').open = false;
+  </script>
 
   <footer class="back"><a href="../">All workbooks</a></footer>
 
   <script type="module">
     import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
     import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
     // ------------------------------------------------------------------
     // 1. SETUP: renderer, scene, camera, lights (same in every workbook)
     // ------------------------------------------------------------------
 
+    const canvas = document.querySelector('canvas.stage');
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+
+    const scene = new THREE.Scene();
+
+    const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
+    const view = new THREE.Vector3(1.4, 2.1, 3.4); // where the camera sits
+
+    // drag to look around, scroll to zoom
+    const orbit = new OrbitControls(camera, canvas);
+    orbit.target.set(0, 1, 0); // look at the cat, on top of the planet
+    orbit.enableDamping = true;
+
+    // a soft light from everywhere, and a sun from one side
+    const ambient = new THREE.AmbientLight('white', 1.2);
+    const sun = new THREE.DirectionalLight('white', 2);
+    sun.position.set(-3, 4, 4);
+    scene.add(ambient, sun);
+
+    // keep the picture sharp and unstretched when the window changes size
+    function resize() {
+      renderer.setSize(innerWidth, innerHeight, false);
+      camera.aspect = innerWidth / innerHeight;
+      camera.updateProjectionMatrix();
+      // on a tall, narrow screen (a phone), step back so everything fits the width
+      camera.position.copy(view).multiplyScalar(1 / Math.min(camera.aspect, 1));
+    }
+    addEventListener('resize', resize);
+    resize();
 
     // ------------------------------------------------------------------
-    // 2. THE THING: the cat (../assets/models/cat.glb) and the planet it walks on
+    // 2. THE THING: a tiny planet, and a cat walking on top of it
     // ------------------------------------------------------------------
 
+    // the words in the panel that tell the story
+    const status = document.getElementById('status');
+    const zoomIn = document.getElementById('zoomIn');
+
+    // ---- The planet: the globe from workbook 1, with lines every 30° ----
+
+    const planet = new THREE.Group();
+    scene.add(planet);
+
+    const cyan = new THREE.Color('#3bb4e5');
+    const blue = new THREE.Color('#4a5bb5');
+    const purple = new THREE.Color('#7b3fa0');
+
+    const ballShape = new THREE.SphereGeometry(1, 64, 32);
+    const colours = [];
+    const position = ballShape.attributes.position;
+    for (let i = 0; i < position.count; i++) {
+      const t = (position.getX(i) + 1) / 2; // 0 on one side, 1 on the other
+      const colour = t < 0.5 ? cyan.clone().lerp(blue, t * 2) : blue.clone().lerp(purple, t * 2 - 1);
+      colours.push(colour.r, colour.g, colour.b);
+    }
+    ballShape.setAttribute('color', new THREE.Float32BufferAttribute(colours, 3));
+    planet.add(new THREE.Mesh(ballShape, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6 })));
+
+    // every line on a globe is a ring
+    const lineMaterial = new THREE.MeshBasicMaterial({ color: 'white' });
+    const ring = (radius) => new THREE.Mesh(new THREE.TorusGeometry(radius, 0.008, 6, 128), lineMaterial);
+
+    for (let lon = 0; lon < 180; lon += 30) { // meridians, pole to pole
+      const meridian = ring(1.002);
+      meridian.rotation.y = THREE.MathUtils.degToRad(lon);
+      planet.add(meridian);
+    }
+    for (let lat = -60; lat <= 60; lat += 30) { // parallels, at real latitudes
+      const parallel = ring(Math.cos(THREE.MathUtils.degToRad(lat)) + 0.002);
+      parallel.rotation.x = Math.PI / 2;
+      parallel.position.y = Math.sin(THREE.MathUtils.degToRad(lat));
+      planet.add(parallel);
+    }
+
+    // latitude and longitude → a point on the planet's surface
+    function pointOnPlanet(lat, lon) {
+      const φ = THREE.MathUtils.degToRad(lat);
+      const λ = THREE.MathUtils.degToRad(lon);
+      return new THREE.Vector3(Math.cos(φ) * Math.sin(λ), Math.sin(φ), Math.cos(φ) * Math.cos(λ));
+    }
+
+    // a pin where the cat is heading
+    const pin = new THREE.Mesh(
+      new THREE.SphereGeometry(0.035, 16, 8),
+      new THREE.MeshStandardMaterial({ color: 'white' })
+    );
+    planet.add(pin);
+
+    // ---- The cat: a model made in Blender, loaded from a .glb file ----
+
+    const loader = new GLTFLoader();
+    const gltf = await loader.loadAsync('../assets/models/cat.glb', (progress) => {
+      status.textContent = `Loading the cat… ${(progress.loaded / 1e6).toFixed(1)} MB`;
+    });
+
+    const cat = gltf.scene;
+    cat.scale.setScalar(0.9);
+    cat.position.y = 1; // standing on top of the planet (radius 1)
+    scene.add(cat);
+
+    // the model's material is set to full metal, which looks black without reflections to show:
+    // make it matt navy instead
+    cat.traverse((part) => {
+      if (part.material) {
+        part.material.metalness = 0;
+        part.material.color.set('#1f2a44');
+      }
+    });
+
+    // The animations: the file holds 17 (gallop, trot, sit…). We use two of them.
+    // A mixer plays animations on a model; an action is one animation, ready to play.
+    const mixer = new THREE.AnimationMixer(cat);
+    const clip = (name) => gltf.animations.find((animation) => animation.name === name);
+    const walk = mixer.clipAction(clip('walk'));
+    const stand = mixer.clipAction(clip('stand'));
+    stand.play();
+
+    // Measured from the walk: while a paw is on the ground it moves backwards at 0.165 units a
+    // second (at full size). The ground must move at that speed too, or the paws slide.
+    const PAW_SPEED = 0.165 * cat.scale.x;
+
+    // ---- The journey ----
+
+    let destination = null; // where the cat is heading: a point on the planet
+    let walking = false;
+
+    function walkTo(lat, lon) {
+      destination = pointOnPlanet(lat, lon);
+      pin.position.copy(destination);
+      zoomIn.href = `../03-diorama/?lat=${lat}&lon=${lon}`;
+      zoomIn.hidden = true;
+    }
+
+    // blend smoothly from one animation to another over 0.3 seconds
+    function setWalking(on) {
+      walking = on;
+      const [from, to] = on ? [stand, walk] : [walk, stand];
+      to.reset().fadeIn(0.3).play();
+      from.fadeOut(0.3);
+    }
+
+    // start in Crowborough: turn the planet so it's right under the cat's paws
+    walkTo(51.06, 0.16);
+    planet.quaternion.setFromUnitVectors(destination, new THREE.Vector3(0, 1, 0));
 
     // ------------------------------------------------------------------
     // 3. CONTROLS: plain HTML inputs wired to the scene
     // ------------------------------------------------------------------
 
+    const place = document.getElementById('place');
+    const speed = document.getElementById('speed');
+
+    function go() {
+      const [lat, lon] = place.value.split(/[\s,]+/).map(Number); // "51.06, 0.16" → [51.06, 0.16]
+      if (Math.abs(lat) <= 90 && Math.abs(lon) <= 180) walkTo(lat, lon);
+      else status.textContent = 'Type a latitude and longitude, like 51.06, 0.16';
+    }
+    document.getElementById('go').addEventListener('click', go);
+    place.addEventListener('keydown', (event) => { if (event.key === 'Enter') go(); });
+
+    for (const button of document.querySelectorAll('[data-place]')) {
+      button.addEventListener('click', () => { place.value = button.dataset.place; go(); });
+    }
+
+    status.textContent = 'In Crowborough. Where next?';
 
     // ------------------------------------------------------------------
     // 4. LOOP: animate and render, every frame
     // ------------------------------------------------------------------
 
+    const up = new THREE.Vector3(0, 1, 0);
+    const facing = new THREE.Quaternion();
+    let lastTime = 0;
 
-    // PLACEHOLDER: proves the libraries load. Remove with the message above.
-    document.querySelector('.check').textContent = `three.js r${THREE.REVISION} loaded`;
+    renderer.setAnimationLoop((time) => {
+      const seconds = Math.min((time - lastTime) / 1000, 0.1); // since the last frame
+      lastTime = time;
+
+      // Where is the destination now? The planet has turned, so turn the point with it.
+      const ahead = destination.clone().applyQuaternion(planet.quaternion);
+      const angleLeft = ahead.angleTo(up); // radians between the paws and the destination
+
+      if (angleLeft > 0.001) {
+        if (!walking) setWalking(true);
+
+        // Turn the planet under the cat: about the axis that rolls `ahead` up to the paws,
+        // at the paws' speed (on a ball of radius 1, distance = angle)
+        const axis = new THREE.Vector3().crossVectors(ahead, up).normalize();
+        const step = Math.min(angleLeft, PAW_SPEED * Number(speed.value) * seconds);
+        planet.rotateOnWorldAxis(axis, step);
+
+        // turn the cat (smoothly) to face the destination
+        if (angleLeft > 0.02) {
+          facing.setFromAxisAngle(up, Math.atan2(ahead.x, ahead.z));
+          cat.quaternion.rotateTowards(facing, 3 * seconds);
+        }
+
+        status.textContent = `${Math.round(angleLeft * 6371).toLocaleString()} km to go`;
+      } else if (walking) {
+        setWalking(false);
+        status.textContent = 'Arrived';
+        zoomIn.hidden = false;
+      }
+
+      mixer.timeScale = Number(speed.value); // play the walk faster or slower, to match the ground
+      mixer.update(seconds);
+      orbit.update();
+      renderer.render(scene, camera);
+    });
   </script>
 </body>
 </html>
