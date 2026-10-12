@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hello, sphere · Mercator 3D workbooks</title>
+  <link rel="icon" href="../assets/brand/mercator-mark-192.png">
+  <link rel="stylesheet" href="../shared/style.css">
+  <script src="../shared/errors.js"></script>
+
+  <!-- "three" means our local copy: no build step, no CDN, works on conference wifi -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "../vendor/three/build/three.module.js"
+      }
+    }
+  </script>
+</head>
+<body>
+  <canvas class="stage"></canvas>
+
+  <header class="title">
+    <div class="zoom">Start here</div>
+    <h1>Hello, sphere</h1>
+  </header>
+
+  <details class="controls" open>
+    <summary>Controls</summary>
+
+    <label>Words on the sphere</label>
+    <input id="words" type="text" value="three.js">
+  </details>
+  <script>
+    // on phones, start with the controls folded away (tap "Controls" to open them)
+    if (matchMedia('(max-width: 700px)').matches) document.querySelector('.controls').open = false;
+  </script>
+
+  <footer class="back"><a href="../">All workbooks</a></footer>
+
+  <script type="module">
+    // New to JavaScript? A few things you'll see below:
+    //   import ... from        bring in code from another file, like Scala's import
+    //   const x = ...          a name that can't be reassigned, like val
+    //   new Thing(...)         make an object from a class
+    //   (a) => a * 2           a function with no name, like Scala's a => a * 2
+    //   `Hello ${name}`        a string with a value in it, like s"Hello $name"
+
+    import * as THREE from 'three'; // all of three.js, under the name THREE
+
+    // ------------------------------------------------------------------
+    // 1. SETUP: renderer, scene, camera, light (same in every workbook)
+    // ------------------------------------------------------------------
+
+    // The renderer draws the scene onto the <canvas> in the page, using the graphics card
+    const canvas = document.querySelector('canvas.stage');
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+
+    // The scene holds everything we want to see. It starts empty.
+    const scene = new THREE.Scene();
+
+    // The camera is where we look from, with a 35° field of view. resize() places it.
+    const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
+
+    // Without light, everything is black. One soft light from everywhere, one from the top left.
+    scene.add(new THREE.AmbientLight('white', 1.5));
+    const sun = new THREE.DirectionalLight('white', 2);
+    sun.position.set(-2, 2, 3);
+    scene.add(sun);
+
+    // Fill the window, and keep filling it when it changes size
+    function resize() {
+      renderer.setSize(innerWidth, innerHeight, false);
+      camera.aspect = innerWidth / innerHeight;
+      camera.updateProjectionMatrix();
+      // 4.5 units back from the middle; further on a tall, narrow screen (a phone), so it fits
+      camera.position.z = 4.5 / Math.min(camera.aspect, 1);
+    }
+    addEventListener('resize', resize);
+    resize();
+
+    // ------------------------------------------------------------------
+    // 2. THE THING: a sphere with words painted on it
+    // ------------------------------------------------------------------
+
+    // The words: draw them on a flat 2D canvas, then wrap that picture round the sphere.
+    // The picture is twice as wide as it is tall, like a map of the world.
+    const picture = document.createElement('canvas');
+    picture.width = 1024;
+    picture.height = 512;
+    const pen = picture.getContext('2d');
+
+    const skin = new THREE.CanvasTexture(picture); // the picture, ready to wrap round a shape
+    skin.colorSpace = THREE.SRGBColorSpace; // so the colours look as we drew them
+
+    function paint(words) {
+      // the background: the logo's colours, left to right
+      const gradient = pen.createLinearGradient(0, 0, picture.width, 0);
+      gradient.addColorStop(0, '#3bb4e5');
+      gradient.addColorStop(0.5, '#4a5bb5');
+      gradient.addColorStop(1, '#7b3fa0');
+      pen.fillStyle = gradient;
+      pen.fillRect(0, 0, picture.width, picture.height);
+
+      // the words, twice: once on the front of the sphere and once on the back
+      // (each squeezed to fit half the picture, so long words don't overlap)
+      pen.fillStyle = 'white';
+      pen.font = 'bold 72px system-ui, sans-serif';
+      pen.textAlign = 'center';
+      pen.textBaseline = 'middle';
+      const half = picture.width / 2;
+      pen.fillText(words, half * 0.5, picture.height / 2, half * 0.9);
+      pen.fillText(words, half * 1.5, picture.height / 2, half * 0.9);
+
+      skin.needsUpdate = true; // tell three.js the picture has changed
+    }
+    paint('three.js');
+
+    // Every object on screen is a mesh: a shape (geometry) plus a look (material)
+    const shape = new THREE.SphereGeometry(1, 64, 32); // radius 1, smooth enough to look round
+    const look = new THREE.MeshStandardMaterial({ map: skin, roughness: 0.5 });
+    const sphere = new THREE.Mesh(shape, look);
+    scene.add(sphere);
+
+    // ------------------------------------------------------------------
+    // 3. CONTROLS: plain HTML inputs wired to the scene
+    // ------------------------------------------------------------------
+
+    // when the text box changes, repaint the sphere with the new words
+    const words = document.getElementById('words');
+    words.addEventListener('input', () => paint(words.value));
+
+    // ------------------------------------------------------------------
+    // 4. LOOP: animate and render, every frame (about 60 times a second)
+    // ------------------------------------------------------------------
+
+    renderer.setAnimationLoop(() => {
+      sphere.rotation.y += 0.005; // turn a little each frame
+      renderer.render(scene, camera);
+    });
+  </script>
+</body>
+</html>

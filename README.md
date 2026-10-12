@@ -1,4 +1,4 @@
-# 3D in the browser: four workbooks
+# 3D in the browser: workbooks
 
 Companion code for a talk on how to make 3D experiences in the browser, themed on the
 Mercator Digital logo: a globe drawn with the grid lines of a map.
@@ -17,6 +17,7 @@ something you can hold.
 
 | # | Zoom | Workbook | What you see | The one new idea |
 |---|---|---|---|---|
+| 0 | Start here | [Hello, sphere](00-hello-sphere/) | A sphere with "three.js" painted on it | The smallest scene: renderer, scene, camera, light, one mesh |
 | 1 | z0: the world | [The spinning atlas](01-atlas/) | The logo comes to life as a globe | Scene basics: renderer, camera, lights, loop, sliders |
 | 2 | The journey | [The cat on a tiny planet](02-cat-planet/) | Type a place and the cat walks there | Loading a model (GLB) and playing its walk animation |
 | 3 | z12: the place | [The diorama](03-diorama/) | The ground where the cat stopped, in 3D | Turning data into geometry |
@@ -66,7 +67,7 @@ place (`slides/#12`).
 
 ```
 index.html             the list of workbooks
-01-atlas/ … 04-keychain/   one index.html each
+00-hello-sphere/ … 04-keychain/   one index.html each
 slides/                the talk: one .md per slide, order.txt, and the viewer
 shared/style.css       the Mercator look: navy, and the logo's cyan-blue-purple gradient
 shared/errors.js       shows any error on screen (phones have no console)
@@ -80,6 +81,7 @@ vendor/                three.js r186, JSCAD modeling 2.13 and marked 18, local c
 ## Status
 
 - [x] Repo, theme, placeholders and assets
+- [x] 0. Hello, sphere (for people new to JavaScript)
 - [x] 1. The spinning atlas
 - [x] 2. The cat on a tiny planet
 - [x] 3. The diorama
