@@ -2,7 +2,7 @@
 
 # Try it yourself
 
-**jonibach.github.io/mercator-3d-workbooks**
+**jonibach.github.io/browser-3d-workbooks**
 
 - Four workbooks, each one HTML file
 - Open one, then *View source*: that's all the code

@@ -8,7 +8,7 @@
 
 ???
 
-Our company is named after him, so the talk follows him: his globe, his journeys, his
-projection, and finally his name in your pocket.
+The talk follows him: his globe, his journeys, his projection, and finally the logo's globe
+in your pocket.
 
 The Atlas was published in 1595, the year after he died.

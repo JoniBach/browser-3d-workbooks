@@ -1,12 +1,12 @@
 # 3D in the browser: workbooks
 
-Companion code for a talk on how to make 3D experiences in the browser, themed on the
-Mercator Digital logo: a globe drawn with the grid lines of a map.
+Companion code for a talk on how to make 3D experiences in the browser, themed on a
+logo: a globe drawn with the grid lines of a map.
 
 The aim is to make 3D feel achievable, not impressive. Every workbook is one plain HTML file
 of vanilla JavaScript, with no framework and no build step.
 
-**Try them live: [jonibach.github.io/mercator-3d-workbooks](https://jonibach.github.io/mercator-3d-workbooks/)**
+**Try them live: [jonibach.github.io/browser-3d-workbooks](https://jonibach.github.io/browser-3d-workbooks/)**
 (nothing to install; the code is one *View source* away).
 
 ## The story: zooming in
@@ -69,11 +69,11 @@ place (`slides/#12`).
 index.html             the list of workbooks
 00-hello-sphere/ … 04-keychain/   one index.html each
 slides/                the talk: one .md per slide, order.txt, and the viewer
-shared/style.css       the Mercator look: navy, and the logo's cyan-blue-purple gradient
+shared/style.css       the look: navy, and the logo's cyan-blue-purple gradient
 shared/errors.js       shows any error on screen (phones have no console)
 assets/
   models/cat.glb       the walking cat (from cat-walk), 17 gait clips; we use "walk"
-  brand/               the logo and mark, low-res PNGs from mercatordigital.com (reference only)
+  brand/               the logo and mark, low-res PNGs (reference only)
   tiles/               a Terrarium elevation tile for Crowborough (z12/2049/1370), the offline fallback
 vendor/                three.js r186, JSCAD modeling 2.13 and marked 18, local copies (see vendor/README.md)
 ```
