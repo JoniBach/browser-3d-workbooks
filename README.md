@@ -7,6 +7,9 @@ The aim is to make 3D feel achievable, not impressive. As they say in adventure
 motorcycling: lower the seat height so everyone's feet touch the ground. Every workbook is
 one plain HTML file of vanilla JavaScript, with no framework and no build step.
 
+**Try them live: [jonibach.github.io/mercator-3d-workbooks](https://jonibach.github.io/mercator-3d-workbooks/)**
+(nothing to install; the code is one *View source* away).
+
 ## The story: zooming in
 
 Web maps measure detail in zoom levels: zoom 0 is the whole world in one tile, and each level
