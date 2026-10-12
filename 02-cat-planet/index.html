@@ -181,9 +181,8 @@
     const stand = mixer.clipAction(clip('stand'));
     stand.play();
 
-    // Measured from the walk: while a paw is on the ground it moves backwards at 0.165 units a
-    // second (at full size). The ground must move at that speed too, or the paws slide.
-    const PAW_SPEED = 0.165 * cat.scale.x;
+    // how fast the ground moves under the cat, in units a second, to match the walk
+    const WALK_SPEED = 0.165 * cat.scale.x;
 
     // ---- The journey ----
 
@@ -205,7 +204,7 @@
       from.fadeOut(0.3);
     }
 
-    // start in Crowborough: turn the planet so it's right under the cat's paws
+    // start in Crowborough: turn the planet so it's right under the cat
     walkTo(51.06, 0.16);
     planet.quaternion.setFromUnitVectors(destination, new THREE.Vector3(0, 1, 0));
 
@@ -244,15 +243,15 @@
 
       // Where is the destination now? The planet has turned, so turn the point with it.
       const ahead = destination.clone().applyQuaternion(planet.quaternion);
-      const angleLeft = ahead.angleTo(up); // radians between the paws and the destination
+      const angleLeft = ahead.angleTo(up); // radians between the cat and the destination
 
       if (angleLeft > 0.001) {
         if (!walking) setWalking(true);
 
-        // Turn the planet under the cat: about the axis that rolls `ahead` up to the paws,
-        // at the paws' speed (on a ball of radius 1, distance = angle)
+        // Turn the planet under the cat: about the axis that rolls `ahead` up to the cat,
+        // at walking speed (on a ball of radius 1, distance = angle)
         const axis = new THREE.Vector3().crossVectors(ahead, up).normalize();
-        const step = Math.min(angleLeft, PAW_SPEED * Number(speed.value) * seconds);
+        const step = Math.min(angleLeft, WALK_SPEED * Number(speed.value) * seconds);
         planet.rotateOnWorldAxis(axis, step);
 
         // turn the cat (smoothly) to face the destination
