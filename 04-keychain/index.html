@@ -44,7 +44,8 @@
     <label>Grid lines</label>
     <input id="lines" type="range" min="1" max="5" step="1" value="3">
 
-    <label><input id="turn" type="checkbox" checked> Turn slowly</label>
+    <label>Spin</label>
+    <input id="spin" type="range" min="0" max="3" step="0.05" value="0.5">
 
     <button id="download">Download STL</button>
     <div id="facts"></div>
@@ -243,10 +244,10 @@
     for (const id of inputs) document.getElementById(id).addEventListener('input', rebuild);
     rebuild();
 
-    const turn = document.getElementById('turn');
+    const spin = document.getElementById('spin');
 
     // Save the shape as an STL file, ready for a 3D printer's slicer (it reads millimetres).
-    // Export a fresh mesh, so the file doesn't include the slow turn on screen.
+    // Export a fresh mesh, so the file doesn’t include the spin on screen.
     document.getElementById('download').addEventListener('click', () => {
       const stl = new STLExporter().parse(new THREE.Mesh(keyring.geometry), { binary: true });
       const link = document.createElement('a');
@@ -264,7 +265,7 @@
       const seconds = (time - lastTime) / 1000; // since the last frame
       lastTime = time;
 
-      if (turn.checked) keyring.rotation.y += 0.5 * seconds; // radians per second
+      keyring.rotation.y += Number(spin.value) * seconds; // radians per second
       orbit.update();
       renderer.render(scene, camera);
     });

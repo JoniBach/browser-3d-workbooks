@@ -23,6 +23,7 @@
   <header class="title">
     <div class="zoom">z12: the place</div>
     <h1>The diorama</h1>
+    <p id="status" class="status">Loading heights…</p>
   </header>
 
   <details class="controls" open>
@@ -40,12 +41,16 @@
 
     <label><input id="turn" type="checkbox" checked> Turn slowly</label>
 
-    <p id="status">Loading heights…</p>
     <div id="facts"></div>
   </details>
   <script>
     // on phones, start with the controls folded away (tap "Controls" to open them)
     if (matchMedia('(max-width: 700px)').matches) document.querySelector('.controls').open = false;
+
+    // if anything goes wrong, say so on screen (phones have no console to look in)
+    const showError = (message) => { document.getElementById('status').textContent = `Error: ${message}`; };
+    addEventListener('error', (event) => showError(event.message));
+    addEventListener('unhandledrejection', (event) => showError(event.reason?.message ?? event.reason));
   </script>
 
   <footer class="back"><a href="../">All workbooks</a></footer>
@@ -118,6 +123,7 @@
     //   height in metres = red × 256 + green + blue / 256 − 32768
 
     async function loadHeights(zoom, x, y) {
+      let problem = 'not found';
       const sources = [
         `https://s3.amazonaws.com/elevation-tiles-prod/terrarium/${zoom}/${x}/${y}.png`, // live (free, no key)
         `../assets/tiles/terrarium-${zoom}-${x}-${y}.png` // a saved copy, for no wifi (Crowborough only)
@@ -142,11 +148,11 @@
             heights[i] = Math.max(0, red * 256 + green + blue / 256 - 32768); // the sea is flat: 0 m
           }
           return heights;
-        } catch {
-          // offline, or blocked: try the next source
+        } catch (error) {
+          problem = error.message; // offline, or blocked: try the next source
         }
       }
-      throw new Error('no heights for this tile');
+      throw new Error(`no heights for tile ${zoom}/${x}/${y} (${problem})`);
     }
 
     // ---- Step 3: push a flat grid up into hills ----
@@ -240,8 +246,8 @@
           ${(metresAcross / 1000).toFixed(1)} km across<br>
           Heights ${Math.round(lowest)} m to ${Math.round(highest)} m`;
         history.replaceState(null, '', `?lat=${lat}&lon=${lon}`); // so the address shares this place
-      } catch {
-        status.textContent = 'Couldn’t load heights for that place (offline?)';
+      } catch (error) {
+        status.textContent = `Couldn’t show that place: ${error.message}`;
       }
     }
 

@@ -58,6 +58,14 @@ header.title h1::after {
   background: var(--gradient);
 }
 
+/* a line under the title that's always in view, even with the controls folded */
+header.title .status {
+  margin: 10px 0 0;
+  max-width: min(420px, 60vw);
+  font-size: 14px;
+  color: var(--grey);
+}
+
 /* the control panel: plain HTML inputs */
 .controls {
   position: fixed;
